@@ -8,7 +8,7 @@ export default function Home() {
     const [previousPrices, setPreviousPrices] = useState({}); // Store previous prices
     const [totalPortfolioValue, setTotalPortfolioValue] = useState(0);
     const [ftseValue, setFtseValue] = useState(null); // Initialize ftseValue using useState
-    const [newStock, setNewStock] = useState({ symbol: '', sharesHeld: 0 });
+    const [newStock, setNewStock] = useState({ symbol: '', sharesHeld: '' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingSymbol, setEditingSymbol] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -26,14 +26,13 @@ export default function Home() {
     }, []);
 
 
-
-
     useEffect(() => {
         // Fetch the initial stock data on component mount
         fetchData();
+        fetchFtseValue();
     
         // Set an interval to fetch data every 60 seconds
-        const intervalId = setInterval(fetchData, 30000); 
+        const intervalId = setInterval(fetchData, 60000); 
     
         return () => clearInterval(intervalId); // Clear interval on component unmount
     }, []);
@@ -162,7 +161,7 @@ export default function Home() {
             const response = await fetch(endpoint, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newStock)
+                body: JSON.stringify({ ...newStock, sharesHeld: parseFloat(newStock.sharesHeld) }) // Ensure sharesHeld is a number
             });
 
             if (response.ok) {
@@ -196,12 +195,7 @@ export default function Home() {
         }
     };
 
-    const startEditing = (stock) => {
-        setIsEditing(true);
-        setNewStock({ symbol: stock.symbol, sharesHeld: stock.sharesHeld });
-        setEditingSymbol(stock.symbol);
-    };
-
+    
     const getPriceChangeColor = (symbol, currentPrice) => {
         const previousPrice = previousPrices[symbol];
     
@@ -214,6 +208,13 @@ export default function Home() {
         return ''; // No change, neutral
     };
 
+    const startEditing = (stock) => {
+        setIsEditing(true);
+        setNewStock({ symbol: stock.symbol, sharesHeld: stock.sharesHeld });
+        setEditingSymbol(stock.symbol);
+    };
+    
+    
     const getColorClass = (value) => {
         if (value > 0) return 'positive';
         if (value < 0) return 'negative';
@@ -276,14 +277,9 @@ export default function Home() {
                 <input
                     className="inputs"
                     type="number"
-                    placeholder="Number of Shares Held?"
+                    placeholder="Shares Held"
                     value={newStock.sharesHeld}
-                    onChange={(e) => setNewStock({ ...newStock, sharesHeld: Number(e.target.value) })}
-                    onFocus={(e) => {
-                        if (e.target.value === '0') {
-                            setNewStock({ ...newStock, sharesHeld: '' });
-                        }
-                    }}
+                    onChange={(e) => setNewStock({ ...newStock, sharesHeld: e.target.value })} // Allow string values, but convert to number when submitting
                 />
             </div>
 

@@ -7,7 +7,7 @@ export default function Home() {
     const [stocks, setStocks] = useState([]);
     const [totalPortfolioValue, setTotalPortfolioValue] = useState(0);
     const [djiValue, setDjiValue] = useState(null); // Initialize djiValue using useState
-    const [newStock, setNewStock] = useState({ symbol: '', sharesHeld: 0 });
+    const [newStock, setNewStock] = useState({ symbol: '', sharesHeld: '' }); // sharesHeld initialized as an empty string
     const [isEditing, setIsEditing] = useState(false);
     const [editingSymbol, setEditingSymbol] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -24,8 +24,7 @@ export default function Home() {
         fetchDjiValue(); // Fetch DJI value
     }, []);
 
-
-     // Function to fetch DJI index value
+    // Function to fetch DJI index value
     const fetchDjiValue = async () => {
         try {
             const response = await fetch('/api/usstock?symbol=DJI^'); // Call backend with DJI^ symbol
@@ -37,8 +36,6 @@ export default function Home() {
             console.error('Error fetching DJI index:', error);
         }
     };
-
-    // Other existing code...
 
     useEffect(() => {
         const absoluteDeviation = totalPortfolioValue - baselinePortfolioValue;
@@ -82,18 +79,6 @@ export default function Home() {
     useEffect(() => {
         fetchData();
     }, []);
-
-    useEffect(() => {
-        // Calculate deviations whenever totalPortfolioValue changes
-        //const absoluteDeviation = Math.abs(totalPortfolioValue - baselinePortfolioValue);
-        const absoluteDeviation = (totalPortfolioValue - baselinePortfolioValue);
-        const percentageChange = ((totalPortfolioValue - baselinePortfolioValue) / baselinePortfolioValue) * 100;
-
-        setDeviation({
-            absoluteDeviation,
-            percentageChange,
-        });
-    }, [totalPortfolioValue]); // Recalculate only when totalPortfolioValue changes
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -154,11 +139,11 @@ export default function Home() {
             const response = await fetch(endpoint, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newStock)
+                body: JSON.stringify({ ...newStock, sharesHeld: parseFloat(newStock.sharesHeld) }) // Ensure sharesHeld is a number
             });
 
             if (response.ok) {
-                setNewStock({ symbol: '', sharesHeld: 0 });
+                setNewStock({ symbol: '', sharesHeld: '' }); // Reset to empty string after adding/updating
                 setIsEditing(false);
                 setEditingSymbol('');
                 fetchData();
@@ -201,15 +186,8 @@ export default function Home() {
     };
 
     
-    /*const handleClose = () => {
-        // Redirect users to the desired page
-        window.location.href = 'https://demo-crud-stock.vercel.app/';
 
-        // Close the current window after redirecting
-        window.open('', '_self');
-        window.close();
-    };*/
-
+    
 
     return (
         <div style={{ textAlign: 'center', marginTop: '15px' }}>
@@ -271,14 +249,9 @@ export default function Home() {
                 <input
                     className="inputs"
                     type="number"
-                    placeholder="Number of Shares Held?"
+                    placeholder="Shares Held"
                     value={newStock.sharesHeld}
-                    onChange={(e) => setNewStock({ ...newStock, sharesHeld: Number(e.target.value) })}
-                    onFocus={(e) => {
-                        if (e.target.value === '0') {
-                            setNewStock({ ...newStock, sharesHeld: '' });
-                        }
-                    }}
+                    onChange={(e) => setNewStock({ ...newStock, sharesHeld: e.target.value })} // Allow string values, but convert to number when submitting
                 />
             </div>
 
@@ -339,3 +312,4 @@ export default function Home() {
         </div>
     );
 }
+
