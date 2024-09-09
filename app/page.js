@@ -29,29 +29,43 @@ export default function Home() {
     useEffect(() => {
         // Fetch the initial stock data on component mount
         fetchData();
-        fetchFtseValue();
+        fetchFtseValue(); 
     
         // Set an interval to fetch data every 60 seconds
-        const intervalId = setInterval(fetchData, 60000); 
+        const intervalId = setInterval(fetchData, 15000); 
     
         return () => clearInterval(intervalId); // Clear interval on component unmount
     }, []);
 
-
+    
+    useEffect(() => {
+        fetchFtseValue();  // Initial fetch
+    
+        const intervalId = setInterval(fetchFtseValue, 15000);  // Set interval to fetch FTSE every 60 seconds
+        return () => clearInterval(intervalId);  // Cleanup the interval on component unmount
+    }, []);
+  
     
 
     // Function to fetch FTSE index value
-    const fetchFtseValue = async () => {
-        try {
-            const response = await fetch('/api/stock?symbol=FTSE^');
-            const data = await response.json();
-            if (data.pricePerShare) {
-                setFtseValue(data.pricePerShare);
-            }
-        } catch (error) {
-            console.error('Error fetching FTSE index:', error);
+const fetchFtseValue = async () => {
+    try {
+        console.log("Fetching FTSE value...");  // For debugging
+        const response = await fetch('/api/stock?symbol=FTSE^');
+        if (!response.ok) {
+            throw new Error('Failed to fetch FTSE value');
         }
-    };
+        const data = await response.json();
+        console.log("FTSE data:", data);  // For debugging
+
+        if (data.pricePerShare) {
+            setFtseValue(data.pricePerShare);
+        }
+    } catch (error) {
+        console.error('Error fetching FTSE index:', error);
+    }
+};
+
 
     // Fetch baseline value
     const fetchBaselineValue = async () => {
@@ -96,57 +110,54 @@ export default function Home() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
+            console.log("Fetching stock data...");  // For debugging
             const response = await fetch('/api/stock');
+            if (!response.ok) {
+                throw new Error('Failed to fetch stock data');
+            }
             const data = await response.json();
-
+            console.log("Stock data:", data);  // For debugging
+    
             const updatedStocks = await Promise.all(
                 data.map(async (stock) => {
                     const priceResponse = await fetch(`/api/stock?symbol=${stock.symbol}`);
+                    if (!priceResponse.ok) {
+                        throw new Error(`Failed to fetch price for ${stock.symbol}`);
+                    }
                     const priceData = await priceResponse.json();
-
+                    console.log(`Price data for ${stock.symbol}:`, priceData);  // For debugging
+    
                     const pricePerShare = parseFloat(priceData.pricePerShare);
                     const totalValue = pricePerShare * stock.sharesHeld;
-
+    
                     return {
                         ...stock,
                         pricePerShare: pricePerShare.toLocaleString('en-GB', {
                             minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
+                            maximumFractionDigits: 2,
                         }),
                         totalValue: isNaN(totalValue)
                             ? '0.00'
                             : totalValue.toLocaleString('en-GB', {
                                 minimumFractionDigits: 0,
-                                maximumFractionDigits: 0
-                            })
+                                maximumFractionDigits: 0,
+                            }),
                     };
                 })
             );
-
-            // Only update previousPrices after the first interval has passed
-        setPreviousPrices((prevPrices) => {
-            const newPrices = {};
-            updatedStocks.forEach(stock => {
-                newPrices[stock.symbol] = prevPrices[stock.symbol] || parseFloat(stock.pricePerShare.replace(/,/g, ''));
-            });
-            return newPrices;
-        });
-
-        // Sort the updatedStocks array by totalValue from high to low
-        updatedStocks.sort((a, b) => {
-            const totalValueA = parseFloat(a.totalValue.replace(/,/g, ''));
-            const totalValueB = parseFloat(b.totalValue.replace(/,/g, ''));
-            return totalValueB - totalValueA;
-        });
-
-        setStocks(updatedStocks);
-        calculateTotalPortfolioValue(updatedStocks);
-    } catch (error) {
-        console.error('Error fetching data:', error);
-    } finally {
-        setIsLoading(false);
-    }
-};
+    
+            // Log updated stock data for debugging
+            console.log("Updated stocks:", updatedStocks);
+    
+            setStocks(updatedStocks);
+            calculateTotalPortfolioValue(updatedStocks);
+        } catch (error) {
+            console.error('Error fetching stock data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
 
     const calculateTotalPortfolioValue = (stocks) => {
         const totalValue = stocks.reduce((acc, stock) => acc + parseFloat(stock.totalValue.replace(/,/g, '')), 0);
@@ -165,7 +176,7 @@ export default function Home() {
             });
 
             if (response.ok) {
-                setNewStock({ symbol: '', sharesHeld: 0 });
+                setNewStock({ symbol: '', sharesHeld: '' });
                 setIsEditing(false);
                 setEditingSymbol('');
                 fetchData();
@@ -220,6 +231,12 @@ export default function Home() {
         if (value < 0) return 'negative';
         return 'neutral';
     };
+
+    const refreshAllData = () => {
+        fetchData();      // Fetch stock data
+        fetchFtseValue(); // Fetch FTSE index value
+    };
+    
 
     return (
         <div style={{ textAlign: 'center', marginTop: '15px' }}>
@@ -288,9 +305,9 @@ export default function Home() {
                 <button className='input-stock-button' onClick={addOrUpdateStock}>{isEditing ? 'Update Stock' : 'Add Stock'}</button>
                 {isEditing && <button className='input-stock-button' onClick={() => {
                     setIsEditing(false);
-                    setNewStock({ symbol: '', sharesHeld: 0 });
+                    setNewStock({ symbol: '', sharesHeld: '' });
                 }}>Cancel</button>}
-                <button className='input-stock-button' onClick={fetchData}>Refresh</button>
+                <button className="input-stock-button" onClick={refreshAllData}>Refresh</button>
             </div>
 
             {/* FTSE Index Display */}

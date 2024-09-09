@@ -5,9 +5,10 @@ import Image from 'next/image';
 
 export default function Home() {
     const [stocks, setStocks] = useState([]);
+    const [previousPrices, setPreviousPrices] = useState({}); // Store previous prices
     const [totalPortfolioValue, setTotalPortfolioValue] = useState(0);
-    const [djiValue, setDjiValue] = useState(null); // Initialize djiValue using useState
-    const [newStock, setNewStock] = useState({ symbol: '', sharesHeld: '' }); // sharesHeld initialized as an empty string
+    const [DjiValue, setDjiValue] = useState(null); // Initialize DjiValue using useState
+    const [newStock, setNewStock] = useState({ symbol: '', sharesHeld: '' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingSymbol, setEditingSymbol] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -21,32 +22,59 @@ export default function Home() {
     useEffect(() => {
         fetchData();
         fetchBaselineValue();
-        fetchDjiValue(); // Fetch DJI value
+        fetchDjiValue(); // Fetch FTSE value
     }, []);
 
-    // Function to fetch DJI index value
-    const fetchDjiValue = async () => {
-        try {
-            const response = await fetch('/api/usstock?symbol=DJI^'); // Call backend with DJI^ symbol
-            const data = await response.json();
-            if (data.pricePerShare) {
-                setDjiValue(data.pricePerShare); // Update state with the fetched DJI value
-            }
-        } catch (error) {
-            console.error('Error fetching DJI index:', error);
-        }
-    };
 
     useEffect(() => {
-        const absoluteDeviation = totalPortfolioValue - baselinePortfolioValue;
-        const percentageChange = ((totalPortfolioValue - baselinePortfolioValue) / baselinePortfolioValue) * 100;
+        // Fetch the initial stock data on component mount
+        fetchData();
+        fetchDjiValue(); 
+    
+        // Set an interval to fetch data every 60 seconds
+        const intervalId = setInterval(fetchData, 15000); 
+    
+        return () => clearInterval(intervalId); // Clear interval on component unmount
+    }, []);
 
-        setDeviation({
-            absoluteDeviation,
-            percentageChange,
-        });
-    }, [totalPortfolioValue, baselinePortfolioValue]);
+    
+    useEffect(() => {
+        fetchDjiValue();  // Initial fetch
+    
+        const intervalId = setInterval(fetchDjiValue, 15000);  // Set interval to fetch FTSE every 60 seconds
+        return () => clearInterval(intervalId);  // Cleanup the interval on component unmount
+    }, []);
+  
+    
+    useEffect(() => {
+        console.log("DjiValue state:", DjiValue);  // Log DjiValue state on every change
+    }, [DjiValue]);
 
+
+    // Function to fetch FTSE index value
+    const fetchDjiValue = async () => {
+        try {
+            console.log("Fetching DJ index value...");  // For debugging
+            const response = await fetch('/api/usstock?symbol=DJI^');  // Try changing to 'DJI'
+            if (!response.ok) {
+                throw new Error('Failed to fetch DJ Index value');
+            }
+            const data = await response.json();
+            console.log("DJ Index data:", data);  // For debugging
+    
+            if (data.pricePerShare) {
+                setDjiValue(data.pricePerShare);
+            } else {
+                console.error('Price per share not found in data', data);
+            }
+        } catch (error) {
+            console.error('Error fetching DJ index value:', error);
+        }
+    };
+    
+
+
+    // Fetch baseline value
     const fetchBaselineValue = async () => {
         try {
             const response = await fetch('/api/usbaseline');
@@ -77,54 +105,66 @@ export default function Home() {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        const absoluteDeviation = totalPortfolioValue - baselinePortfolioValue;
+        const percentageChange = ((totalPortfolioValue - baselinePortfolioValue) / baselinePortfolioValue) * 100;
+
+        setDeviation({
+            absoluteDeviation,
+            percentageChange,
+        });
+    }, [totalPortfolioValue, baselinePortfolioValue]);
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
+            console.log("Fetching stock data...");  // For debugging
             const response = await fetch('/api/usstock');
+            if (!response.ok) {
+                throw new Error('Failed to fetch stock data');
+            }
             const data = await response.json();
-
+            console.log("Stock data:", data);  // For debugging
+    
             const updatedStocks = await Promise.all(
                 data.map(async (stock) => {
                     const priceResponse = await fetch(`/api/usstock?symbol=${stock.symbol}`);
+                    if (!priceResponse.ok) {
+                        throw new Error(`Failed to fetch price for ${stock.symbol}`);
+                    }
                     const priceData = await priceResponse.json();
-
+                    console.log(`Price data for ${stock.symbol}:`, priceData);  // For debugging
+    
                     const pricePerShare = parseFloat(priceData.pricePerShare);
                     const totalValue = pricePerShare * stock.sharesHeld;
-
+    
                     return {
                         ...stock,
                         pricePerShare: pricePerShare.toLocaleString('en-GB', {
                             minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
+                            maximumFractionDigits: 2,
                         }),
                         totalValue: isNaN(totalValue)
                             ? '0.00'
                             : totalValue.toLocaleString('en-GB', {
                                 minimumFractionDigits: 0,
-                                maximumFractionDigits: 0
-                            })
+                                maximumFractionDigits: 0,
+                            }),
                     };
                 })
             );
-
-            // Sort the updatedStocks array by totalValue from high to low
-            updatedStocks.sort((a, b) => {
-                const totalValueA = parseFloat(a.totalValue.replace(/,/g, ''));
-                const totalValueB = parseFloat(b.totalValue.replace(/,/g, ''));
-                return totalValueB - totalValueA;
-            });
-
+    
+            // Log updated stock data for debugging
+            console.log("Updated stocks:", updatedStocks);
+    
             setStocks(updatedStocks);
             calculateTotalPortfolioValue(updatedStocks);
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Error fetching stock data:', error);
         } finally {
             setIsLoading(false);
         }
     };
+    
 
     const calculateTotalPortfolioValue = (stocks) => {
         const totalValue = stocks.reduce((acc, stock) => acc + parseFloat(stock.totalValue.replace(/,/g, '')), 0);
@@ -143,7 +183,7 @@ export default function Home() {
             });
 
             if (response.ok) {
-                setNewStock({ symbol: '', sharesHeld: '' }); // Reset to empty string after adding/updating
+                setNewStock({ symbol: '', sharesHeld: '' });
                 setIsEditing(false);
                 setEditingSymbol('');
                 fetchData();
@@ -173,42 +213,54 @@ export default function Home() {
         }
     };
 
+    
+    const getPriceChangeColor = (symbol, currentPrice) => {
+        const previousPrice = previousPrices[symbol];
+    
+        if (previousPrice === undefined) return ''; // Neutral if no previous price
+    
+        if (currentPrice > previousPrice) return 'green'; // Price increased
+        console.log('Current Price:', currentPrice);
+        console.log('Previous Price:', previousPrice);
+        if (currentPrice < previousPrice) return 'red'; // Price decreased
+        return ''; // No change, neutral
+    };
+
     const startEditing = (stock) => {
         setIsEditing(true);
         setNewStock({ symbol: stock.symbol, sharesHeld: stock.sharesHeld });
         setEditingSymbol(stock.symbol);
     };
-
+    
+    
     const getColorClass = (value) => {
         if (value > 0) return 'positive';
         if (value < 0) return 'negative';
         return 'neutral';
     };
 
-    
+    const refreshAllData = () => {
+        fetchData();      // Fetch stock data
+        fetchDjiValue(); // Fetch FTSE index value
+    };
 
     
-
     return (
         <div style={{ textAlign: 'center', marginTop: '15px' }}>
-
-        
-            {/*<button className='input-stock-button' onClick={handleClose}>Exit</button>*/}
-            
+            {/* Title and Baseline Value */}
             <h1 className='heading'>
-                US<span>
-                <Image className='uk-pic'
-                    src="/USFLAG.jpg" 
-                    alt="Portfolio Image" 
-                    width={50}  // Adjust the width
-                    height={50} // Adjust the height
-                    style={{ marginLeft: '5px' }}  // Add margin for spacing
-                />
-                </span> Stock Portfolio  
+                US
+                <span>
+                    <Image className='uk-pic'
+                        src="/USFLAG.jpg" 
+                        alt="Portfolio Image" 
+                        width={50}  
+                        height={50} 
+                        style={{ marginLeft: '5px' }}  
+                    />
+                </span> 
+                Stock Portfolio  
             </h1>
-
-
-
             <h2 className="sub-heading" style={{ marginTop: '10px' }}>Indicative Value: <span className='total-value'>${totalPortfolioValue.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></h2>
             <h4 className='baseline-value'>Baseline: ${baselinePortfolioValue.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</h4>
             
@@ -260,24 +312,26 @@ export default function Home() {
                 <button className='input-stock-button' onClick={addOrUpdateStock}>{isEditing ? 'Update Stock' : 'Add Stock'}</button>
                 {isEditing && <button className='input-stock-button' onClick={() => {
                     setIsEditing(false);
-                    setNewStock({ symbol: '', sharesHeld: 0 });
+                    setNewStock({ symbol: '', sharesHeld: '' });
                 }}>Cancel</button>}
-                <button className='input-stock-button' onClick={fetchData}>Refresh</button>
+                <button className="input-stock-button" onClick={refreshAllData}>Refresh</button>
             </div>
 
-            {/* FTSE Index Display */}
-        {/*{ftseValue !== null && (
-            <h2 className="ftse-index" style={{ marginBottom: '20px', color:'grey', fontSize:'0.9rem' }}>
-                FTSE 100 Index: <span>{ftseValue.toLocaleString('en-GB')}</span>
-            </h2>
-        )}*/}
-
-
-            {/* Display the fetched DJI value */}
             <div>
                 <h2 className="ftse-index" style={{ marginBottom: '20px', color:'grey', fontSize:'0.9rem' }}>
-                    DJ Index: {djiValue !== null ? djiValue.toLocaleString('en-GB') : 'Loading...'}</h2>
+                    DJ Index: {typeof DjiValue === 'number' ? DjiValue.toLocaleString('en-GB') : 'Loading...'}
+                </h2>
+
             </div>
+
+            
+
+            {/* FTSE Index Display */}
+        {/*{DjiValue !== null && (
+            <h2 className="ftse-index" style={{ marginBottom: '20px', color:'grey', fontSize:'0.9rem' }}>
+                FTSE 100 Index: <span>{DjiValue.toLocaleString('en-GB')}</span>
+            </h2>
+        )}*/}
 
             {/* Stock Table */}
             {isLoading ? (
@@ -288,18 +342,24 @@ export default function Home() {
                         <tr>
                             <th style={{ border: '1px solid black', padding: '8px', backgroundColor: '#f2f2f2' }}>Stock Symbol</th>
                             <th style={{ border: '1px solid black', padding: '8px', backgroundColor: '#f2f2f2' }}>Share price ($)</th>
-                            <th style={{ border: '1px solid black', padding: '8px', backgroundColor: '#f2f2f2' }}>Share holding (n)</th>
+                            <th style={{ border: '1px solid black', padding: '8px', backgroundColor: '#f2f2f2' }}>Shares held</th>
                             <th style={{ border: '1px solid black', padding: '8px', backgroundColor: '#f2f2f2' }}>Total value ($)</th>
                             <th style={{ border: '1px solid black', padding: '8px', backgroundColor: '#f2f2f2' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {stocks.map(stock => (
+                        {stocks.map((stock) => (
                             <tr key={stock.symbol}>
                                 <td style={{ border: '1px solid black', padding: '8px' }}>{stock.symbol}</td>
-                                <td style={{ border: '1px solid black', padding: '8px' }}>{stock.pricePerShare}</td>
+                                <td
+                                    className={`price-cell ${getPriceChangeColor(stock.symbol, parseFloat(stock.pricePerShare.replace(/,/g, '')))}`}
+                                    style={{ border: '1px solid black', padding: '8px' }}
+                                >
+                                    £{stock.pricePerShare}
+                                </td>
+
                                 <td style={{ border: '1px solid black', padding: '8px' }}>{stock.sharesHeld}</td>
-                                <td style={{ border: '1px solid black', padding: '8px' }}>{stock.totalValue}</td>
+                                <td style={{ border: '1px solid black', padding: '8px' }}>£{stock.totalValue}</td>
                                 <td style={{ border: '1px solid black', padding: '8px' }}>
                                     <button className="edit-button" onClick={() => startEditing(stock)}>Edit</button>
                                     <button className="delete-button" onClick={() => deleteStock(stock.symbol)}>Delete</button>
@@ -312,4 +372,3 @@ export default function Home() {
         </div>
     );
 }
-
