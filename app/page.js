@@ -32,7 +32,7 @@ export default function Home() {
         fetchFtseValue(); 
     
         // Set an interval to fetch data every 60 seconds
-        const intervalId = setInterval(fetchData, 15000); 
+        const intervalId = setInterval(fetchData, 60000); 
     
         return () => clearInterval(intervalId); // Clear interval on component unmount
     }, []);
@@ -41,7 +41,7 @@ export default function Home() {
     useEffect(() => {
         fetchFtseValue();  // Initial fetch
     
-        const intervalId = setInterval(fetchFtseValue, 15000);  // Set interval to fetch FTSE every 60 seconds
+        const intervalId = setInterval(fetchFtseValue, 60000);  // Set interval to fetch FTSE every 60 seconds
         return () => clearInterval(intervalId);  // Cleanup the interval on component unmount
     }, []);
   
@@ -110,49 +110,44 @@ const fetchFtseValue = async () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            console.log("Fetching stock data...");  // For debugging
             const response = await fetch('/api/stock');
-            if (!response.ok) {
-                throw new Error('Failed to fetch stock data');
-            }
             const data = await response.json();
-            console.log("Stock data:", data);  // For debugging
-    
+
             const updatedStocks = await Promise.all(
                 data.map(async (stock) => {
                     const priceResponse = await fetch(`/api/stock?symbol=${stock.symbol}`);
-                    if (!priceResponse.ok) {
-                        throw new Error(`Failed to fetch price for ${stock.symbol}`);
-                    }
                     const priceData = await priceResponse.json();
-                    console.log(`Price data for ${stock.symbol}:`, priceData);  // For debugging
-    
+
                     const pricePerShare = parseFloat(priceData.pricePerShare);
                     const totalValue = pricePerShare * stock.sharesHeld;
-    
+
                     return {
                         ...stock,
                         pricePerShare: pricePerShare.toLocaleString('en-GB', {
                             minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
+                            maximumFractionDigits: 2
                         }),
                         totalValue: isNaN(totalValue)
                             ? '0.00'
                             : totalValue.toLocaleString('en-GB', {
                                 minimumFractionDigits: 0,
-                                maximumFractionDigits: 0,
-                            }),
+                                maximumFractionDigits: 0
+                            })
                     };
                 })
             );
-    
-            // Log updated stock data for debugging
-            console.log("Updated stocks:", updatedStocks);
-    
+
+            // Sort the updatedStocks array by totalValue from high to low
+            updatedStocks.sort((a, b) => {
+                const totalValueA = parseFloat(a.totalValue.replace(/,/g, ''));
+                const totalValueB = parseFloat(b.totalValue.replace(/,/g, ''));
+                return totalValueB - totalValueA;
+            });
+
             setStocks(updatedStocks);
             calculateTotalPortfolioValue(updatedStocks);
         } catch (error) {
-            console.error('Error fetching stock data:', error);
+            console.error('Error fetching data:', error);
         } finally {
             setIsLoading(false);
         }
