@@ -55,12 +55,12 @@ export default function StockSearchPage() {
   
         <h1 className='stock-label'>Stock Symbol Lookup</h1>
   
-        <input
+        <input className='inputs'
           type="text"
           placeholder="Enter stock name or symbol"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: '300px', padding: '10px', marginBottom: '10px' }}
+          style={{ width: '300px', padding: '10px', marginBottom: '10px', fontSize:'17px', borderRadius:'7px' }}
         />
   
         <ul style={{ border: '1px solid #ccc', width: '300px', padding: '0', listStyleType: 'none' }}>
@@ -76,7 +76,7 @@ export default function StockSearchPage() {
         </ul>
   
         {/* Display the selected stock in an additional input box */}
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginTop: '20px', marginRight:'10px' }}>
           <label>Selected Stock Symbol:</label>
         </div>
   
@@ -87,7 +87,7 @@ export default function StockSearchPage() {
             type="text"
             defaultValue={selectedStock}
             readOnly
-            style={{ marginRight: '10px', marginTop: '10px', padding: '8px', width: '300px' }}
+            style={{ marginRight: '10px', marginLeft:'40px', marginTop: '10px', padding: '8px', width: '200px' }}
           />
           <button onClick={handleCopy} style={{ padding: '8px' }}>
             Copy

@@ -23,6 +23,7 @@ body{
 
 .currency-input{
   padding: 7px 8px;
+  font-size: 17px;
   width: 120px;
   border-radius: 5px;
   border: 1px solid #ccc; /* Set a consistent border color */
@@ -31,6 +32,7 @@ body{
 .selector{
   padding: 6px 8px;
   margin-left: 4px;
+  font-size: 17px;
   border-radius: 5px;
   border: 1px solid #ccc; /* Set a consistent border color */
 }
