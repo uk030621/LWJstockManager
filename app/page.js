@@ -276,7 +276,7 @@ const fetchFtseValue = async () => {
             {/*<a className='hyperlink1' href="https://uk.finance.yahoo.com/lookup" target="_blank" rel="noopener noreferrer" >Link - <span className='symbol-lookup'>symbol lookup</span> </a>*/}
             <Link className='stock-symbol-search' href = "/symbolsearch">Symbol Search</Link>
             <Link className='currency-link' href="/currency">Currency Converter</Link>
-            <Link className='usstock-link' href="/uscurrency">US Stocks</Link>
+            <Link className='usstock-link' href="/uscurrency">US Portfolio</Link>
             {/* Add or Update Stock Form */}
             <div>
                 <input className='inputs'
