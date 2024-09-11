@@ -87,7 +87,7 @@ export default function StockSearchPage() {
             type="text"
             defaultValue={selectedStock}
             readOnly
-            style={{ marginRight: '10px', marginLeft:'40px', marginTop: '10px', padding: '8px', width: '200px' }}
+            style={{ marginRight: '10px', marginLeft:'40px', marginTop: '10px', padding: '8px', width: '200px', backgroundColor:'yellow' }}
           />
           <button onClick={handleCopy} style={{ padding: '8px' }}>
             Copy

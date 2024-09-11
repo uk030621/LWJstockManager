@@ -226,7 +226,6 @@ button:hover{
 
 .selected-symbol{
   margin-bottom: 10px;
-  background-color: grey;
   border: none;
   border-radius: 7px;
 }
